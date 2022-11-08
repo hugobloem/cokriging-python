@@ -157,5 +157,5 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
         else:
             x0ss, ss, id, _ = cokri2(t, t2, id, model, c, sv, itype, avg, ng) # TODO: check _
             x0s = np.stack([x0s, np.stack([x0[i:i+nnx, :], x0ss])])
-            s = np.stack([s, np.stack([x0[i:i+nnx, :], ss])])
+            s = np.block([s, [x0[i:i+nnx, :], ss]])
     return x0s, s, sv, id, 1 # TODO: check 1

@@ -23,7 +23,7 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
     rp, p = c.shape
     r = rp/p
     m, d = x0.shape
-    cx = np.stack([x[:, :d], x0])
+    cx = np.block([[x[:, :d]], [x0]])
 
     # calculation of left covariance matrix K and right covariance matrix K0
     K = np.zeros((n*p, (n+m)*p))
@@ -46,13 +46,13 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
         pass
     if itype == 2:
         # cokriging with one non-bias condition (Isaaks and Srivastava, 1990)
-        k = np.stack([np.stack([k, np.ones(n*p+1)]), np.stack([np.ones((1, n*p)), 0])])
-        k0, nc = np.stack([k0, np.zeros((1, m*p))]), 1
+        k = np.block([[k, np.ones(n*p+1)], [np.ones((1, n*p)), 0]])
+        k0, nc = np.block([[k0], [np.zeros((1, m*p))]]), 1
     elif itype >= 3:
         # ordinary cokriging (Myers, Math. Geol, 1982)
         t = np.kron(np.ones((1, n)), np.eye(p))
-        k = np.stack([np.stack([k, t.T]), np.stack([t, np.zeros((p, p))])])
-        k0, nc = np.stack([k0, np.kron(np.ones((1,m)), np.eye(p))]), p
+        k = np.block([[k, t.T], [t, np.zeros((p, p))]])
+        k0, nc = np.block([k0, [np.kron(np.ones((1,m)), np.eye(p))]]), p
         
         if itype >= 4:
             # universal kriging; linear drift constraints
