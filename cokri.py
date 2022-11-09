@@ -93,20 +93,20 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
         n1 = np.prod(nd[:i-1])
         nr = np.prod(nd[i+1:d])
         t = np.arange( .5*(1/nd[i]-1), .5*(1-1/nd[i]), 1/nd[i]).reshape((1,nd[i]))
-        t2 = np.stack([t2, np.kron(np.ones((n1, 1), np.kron(t, np.ones((nr, 1)) )))])
+        t2 = np.block([t2, np.kron(np.ones((n1, 1), np.kron(t, np.ones((nr, 1)) )))])
     
     grid = t2 * (np.ones((ng, 1)) @ block)
-    t = np.stack([grid, np.zeros((ng, p))])
+    t = np.block([grid, np.zeros((ng, p))])
 
     # for block cokriging a double grid is created by shifting slightly the
     # original grid to avoid the zero distance effect (Journel and Huijbregts, p. 96)
     if  ng > 1:
         grid += np.ones((ng, 1)) @ block /  (ng*1e6)
-    x0s, s, id, 1, k0 = cokri2(t, grid, [], model, c, sv, 99, avg, ng)
+    x0s, s, id, l, k0 = cokri2(t, grid, [], model, c, sv, 99, avg, ng)
 
     # sv contain the variance of points or blocks in the universe
     for i in range(p):
-        sv = np.stack([sv, np.mean(k0[i:p*ng:p, i:p*ng:p])]) # TODO: check means
+        sv = np.block([sv, np.mean(k0[i:p*ng:p, i:p*ng:p])]) # TODO: check means
     
     # start cokriging
     for i in range(0, m, ntok):
@@ -124,10 +124,10 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
         t = []
         id = []
         ii = 1
-        tx = np.stack([tx, np.nan])
+        tx = np.block([[tx], [np.nan]])
         while ii <= nk and tx[ii] <= rad*rad:
-            t = np.stack([t, x[j[ii], :]])
-            id = np.stack([id, np.stack([np.ones((p, 1)) @ j[ii], idp])])
+            t = np.block([[t], [x[j[ii], :]]])
+            id = np.block([[id], [np.ones((p, 1)) @ j[ii], idp]])
             ii += 1
         t2 = x0[i:i+nnx, :]
 
@@ -152,10 +152,10 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
                 est[ip:ip+np] = x0ss[ip:ip+np]
                 sest[ip:ip+np] = ss[ip:ip+np]
                 t[0, d+ip:d+ip+np] = vtemp
-            x0s = np.stack([x0s, np.stack([t2,est])])
-            s = np.stack([s, np.stack([t2,sest])])
+            x0s = np.block([[x0s], [t2,est]])
+            s = np.block([[s], [t2,sest]])
         else:
             x0ss, ss, id, _ = cokri2(t, t2, id, model, c, sv, itype, avg, ng) # TODO: check _
-            x0s = np.stack([x0s, np.stack([x0[i:i+nnx, :], x0ss])])
-            s = np.block([s, [x0[i:i+nnx, :], ss]])
+            x0s = np.block([[x0s], [x0[i:i+nnx, :], x0ss]])
+            s = np.block([[s], [x0[i:i+nnx, :], ss]])
     return x0s, s, sv, id, 1 # TODO: check 1
