@@ -1,4 +1,6 @@
 import numpy as np
+from utils import means
+from cokri2 import cokri2
 
 def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
     '''
@@ -106,7 +108,7 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
 
     # sv contain the variance of points or blocks in the universe
     for i in range(p):
-        sv = np.block([sv, np.mean(k0[i:p*ng:p, i:p*ng:p])]) # TODO: check means
+        sv = np.block([sv, means(k0[i:p*ng:p, i:p*ng:p])])
     
     # start cokriging
     for i in range(0, m, ntok):
@@ -115,7 +117,7 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
 
         # sort x samples in increasing distance relatively to centroid of 'ntok'
         # points to krige
-        centx0 = np.ones((n, 1)) @ np.mean(x0[i:i+nnx, :], axis=0) # TODO: check axis
+        centx0 = np.ones((n, 1)) @ means(x0[i:i+nnx, :])
         tx = (x[:, :d] - centx0) * (x[:, :d] - centx0) @ np.ones((d, 1))
         tx, j = np.sort(tx), np.argsort(tx)
 

@@ -1,4 +1,5 @@
 import numpy as np
+from utils import trans, means
 
 def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
     '''
@@ -82,7 +83,7 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
     for i in range(m):
         for ip in range(p):
             j = ng * p * (i-1) + ip # TODO: check indices
-            t = np.block([t, np.mean(k0[:, j:i*ng*p:p])]) # TODO: check mean axis
+            t = np.block([t, means(k0[:, j:i*ng*p:p])])
     k0 = t
     t = x[:, d:d+p]
     if itype < 3:
