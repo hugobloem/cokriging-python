@@ -1,8 +1,8 @@
 import numpy as np
-from utils import means
-from cokri2 import cokri2
+from .utils import means
+from .cokri2 import cokri2
 
-def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
+def cokri(x,x0,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
     '''
     COKRI performs point or block cokriging in D dimensions (any integer) 
     of P variables (any integer) with a combination of R basic models 
@@ -75,27 +75,30 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
     '''
     
     # definition of some constants
-    m, d = x0.shape
+    m, d = x0.shape[0], np.prod(x0.shape[1:])
 
     # check for cross-validation
     if ival >= 1:
         ntok = 1
         x0 = x[:, :d]
-        nd = np.ones((1,d))
-        m, d = x0.shape
-    rp, p = c.shape
-    n, t = x.shape
+        nd = np.ones(d)
+        m, d = x0.shape[0], np.prod(x0.shape[1:])
+    rp, p = c.shape[0], np.prod(c.shape[1:])
+    n, t = x.shape[0], np.prod(x.shape[1:])
     nk = np.minimum(nk, n)
     ntok = np.minimum(ntok, m)
-    idp = np.arange(p).reshape((1,p))
+    idp = np.arange(p)[:,np.newaxis]
     ng = np.prod(nd)
 
     # compute point (ng=1) or block (ng>1) variance
     for i in range(d):
-        n1 = np.prod(nd[:i-1])
-        nr = np.prod(nd[i+1:d])
-        t = np.arange( .5*(1/nd[i]-1), .5*(1-1/nd[i]), 1/nd[i]).reshape((1,nd[i]))
-        t2 = np.block([t2, np.kron(np.ones((n1, 1), np.kron(t, np.ones((nr, 1)) )))])
+        nl = np.prod(nd[:i])
+        nr = np.prod(nd[i+1:d+1])
+        t = np.arange( .5*(1/nd[i]-1), .5*(1-1/nd[i]) + 1/nd[i], 1/nd[i])[:, np.newaxis]
+        if i == 0:
+            t2 = np.kron(np.ones((nl, 1)), np.kron(t, np.ones((nr, 1))))
+        else:
+            t2 = np.block([t2, np.kron(np.ones((nl, 1)), np.kron(t, np.ones((nr, 1))))])
     
     grid = t2 * (np.ones((ng, 1)) @ block)
     t = np.block([grid, np.zeros((ng, p))])
@@ -104,11 +107,14 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
     # original grid to avoid the zero distance effect (Journel and Huijbregts, p. 96)
     if  ng > 1:
         grid += np.ones((ng, 1)) @ block /  (ng*1e6)
-    x0s, s, id, l, k0 = cokri2(t, grid, [], model, c, sv, 99, avg, ng)
+    x0s, s, id, l, k0 = cokri2(t, grid, [], model, c, np.array([]), 99, avg, ng)
 
     # sv contain the variance of points or blocks in the universe
     for i in range(p):
-        sv = np.block([sv, means(k0[i:p*ng:p, i:p*ng:p])])
+        if i == 0:
+            sv = means(k0[i:p*ng:p, i:p*ng:p])
+        else:
+            sv = np.block([sv, means(k0[i:p*ng:p, i:p*ng:p])])
     
     # start cokriging
     for i in range(0, m, ntok):
@@ -125,11 +131,17 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
         # and variable (id)
         t = []
         id = []
-        ii = 1
+        ii = 0
         tx = np.block([[tx], [np.nan]])
         while ii <= nk and tx[ii] <= rad*rad:
-            t = np.block([[t], [x[j[ii], :]]])
-            id = np.block([[id], [np.ones((p, 1)) @ j[ii], idp]])
+            if len(t) == 0:
+                t = x[j[ii], :]
+            else:
+                t = np.block([[t], [x[j[ii], :]]])
+            if len(id) == 0:
+                id = np.block([(np.ones((p, 1)) @ j[ii])[:, np.newaxis], idp])
+            else:
+                id = np.block([[id], [(np.ones((p, 1)) @ j[ii])[:, np.newaxis], idp]])
             ii += 1
         t2 = x0[i:i+nnx, :]
 
@@ -142,7 +154,7 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
             sest = np.zeros((1, p))
 
             # each variable is cokriged in its turn
-            np = 1 if ival == 1 else p
+            nump = 1 if ival == 1 else p
             for ip in range(0, p, np):
                 # because of the sort, the closest sample is the sample to
                 # cross-validate and its value is in row 0 of t; a temporary vector
@@ -151,9 +163,9 @@ def cokri(x,xO,model,c,itype,avg,block,nd, ival,nk,rad,ntok):
                 vtemp = t[0, d+ip:d+ip+np]
                 t[0, d+ip:d+ip+np] = np.nan
                 x0ss, ss, = cokri2(t, t2, id, model, c, sv, itype, avg, ng)
-                est[ip:ip+np] = x0ss[ip:ip+np]
-                sest[ip:ip+np] = ss[ip:ip+np]
-                t[0, d+ip:d+ip+np] = vtemp
+                est[ip:ip+nump] = x0ss[ip:ip+nump]
+                sest[ip:ip+nump] = ss[ip:ip+nump]
+                t[0, d+ip:d+ip+nump] = vtemp
             x0s = np.block([[x0s], [t2,est]])
             s = np.block([[s], [t2,sest]])
         else:

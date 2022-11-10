@@ -8,8 +8,8 @@ def trans(cx, model, im):
     #
 
     # some constants are defined
-    n, d = cx.shape
-    m, p = model.shape
+    n, d = cx.shape, len(cx.shape)
+    m, p = model.shape, len(model.shape)
 
     # check for 1-D or isotropic model
     if p > d: # TODO: check if this is correct
@@ -55,9 +55,9 @@ def means(x):
           function mean is for a row vector, where MEANS returns the row vector
           instead of the mean value of the elements of the row.
     '''
-    m, n = x.shape
+    m, n = x.shape[0], np.prod(x.shape[1:])
     if m > 1:
-        return np.mean(x, axis=0)
+        return np.mean(x, axis=0, keepdims=True)
     else:
         return x
 
@@ -76,9 +76,9 @@ def checkmod(model, c, d, rad):
     '''
 
     # initialization
-    t, p = c.shape
-    r,t = model.shape
-    ntot = 3000/np.maximum(d, p*p)
+    t, p = c.shape, len(c.shape)
+    r,t = model.shape, len(model.shape)
+    ntot = 3000//np.maximum(d, p*p)
 
     # equations for the various variograms, models should be placed in the same
     # order as in COKRI2 note that here the variograms are computed instead 

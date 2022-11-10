@@ -1,5 +1,5 @@
 import numpy as np
-from utils import trans, means
+from .utils import trans, means
 
 def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
     '''
@@ -20,14 +20,14 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
     ]
 
     # definition of some constants
-    n, t = x.shape
-    rp, p = c.shape
-    r = rp/p
-    m, d = x0.shape
+    n, t = x.shape[0], np.prod(c.shape[1:])
+    rp, p = c.shape[0], np.prod(c.shape[1:])
+    r = rp//p
+    m, d = x0.shape[0], np.prod(x0.shape[1:])
     cx = np.block([[x[:, :d]], [x0]])
 
     # calculation of left covariance matrix K and right covariance matrix K0
-    K = np.zeros((n*p, (n+m)*p))
+    k = np.zeros((n*p, (n+m)*p))
     for i in range(r):
         # calculation of matrix of reduced rotated distances H
         t = trans(cx, model, i)
@@ -39,12 +39,13 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
         # evaluation of the current basic structure
         g = Gam[model[i, 0]](h) # TODO: check if this is correct
         k += np.kron(g, c[ji:js, :])
-    k0, k = k[:, n*p:(n+m)*p], k[:, :n*p]
+    k0 = k[:, n*p:(n+m)*p]
+    k = k[:, :n*p]
 
     # constraints are added according to cokriging type
     if itype == 99:
         # no constraints
-        pass
+        return x0, np.nan, id, np.nan, k0
     if itype == 2:
         # cokriging with one non-bias condition (Isaaks and Srivastava, 1990)
         k = np.block([[k, np.ones(n*p+1)], [np.ones((1, n*p)), 0]])
@@ -78,14 +79,20 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
             nc += nca
 
     # columns of k0 are summed up (if necessary) for block cokriging
-    m = m/ng
-    t = []
+    m = m//ng
     for i in range(m):
         for ip in range(p):
             j = ng * p * (i-1) + ip # TODO: check indices
-            t = np.block([t, means(k0[:, j:i*ng*p:p])])
+            if i == 0:
+                t = means(k0[:, j:i*ng*p:p])
+            else:
+                t = np.block([t, means(k0[:, j:i*ng*p:p])])
     k0 = t
-    t = x[:, d:d+p]
+
+    ### END OF FUNCTION COKRI2 in matlab ###
+
+
+    t = x[:, d-1:d+p]
     if itype < 3:
         # if simple cokriging or cokriging with one non bias condition, the means
         # are substracted
