@@ -87,7 +87,7 @@ def cokri2(x,x0,id,model,c,sv,itype,avg,ng):
                 t = means(k0[:, j:i*ng*p:p])
             else:
                 t = np.block([t, means(k0[:, j:i*ng*p:p])])
-    k0 = t
+    k0 = t.copy()
 
     ### END OF FUNCTION COKRI2 in matlab ###
 
